@@ -6,7 +6,7 @@ Git clone this repository to your local machine, then use
 go build ./cmd/api
 ```
 and execute the built source code
-or just
+or just (with default flag settings)
 ```sh
 go run ./cmd/api
 ```
