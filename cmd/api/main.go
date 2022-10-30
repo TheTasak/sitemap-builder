@@ -52,6 +52,8 @@ type Link struct {
 func main() {
 	var urlFlag = flag.String("url", "https://atos.net", "url from where to parse links")
 	var maxDepthFlag = flag.Int("depth", 3, "max depth to which to parse links")
+	var fileFlag = flag.String("file", "result.txt", "path to file where to store results of program execution")
+	var cmdFlag = flag.Bool("showCmd", false, "show results in command line")
 	flag.Parse()
 
 	pageLinksSet := make(map[string]bool) // only includes one copy of every path
@@ -121,7 +123,7 @@ func main() {
 		linksToParse = linksToParse[1:]
 	}
 
-	file, err := os.Create("links.txt")
+	file, err := os.Create(*fileFlag)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -129,6 +131,8 @@ func main() {
 
 	for _, link := range linksArray {
 		fmt.Fprintf(file, " %s - %s %d\n", link.Href, link.Source, link.Depth)
-		fmt.Printf(" %s - %s %d\n", link.Href, link.Source, link.Depth)
+		if *cmdFlag {
+			fmt.Printf(" %s - %s %d\n", link.Href, link.Source, link.Depth)
+		}
 	}
 }
