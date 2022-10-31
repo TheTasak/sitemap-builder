@@ -1,5 +1,5 @@
 # Sitemap Builder
-Command line tool for recursive scraping links of a website source
+Command line tool for recursive links scraping of a website source
 ## How to use
 Git clone this repository to your local machine, then use 
 ```sh
@@ -12,7 +12,8 @@ go run ./cmd/api
 ```
 ## Options
 The app doesn't require any flags, but there's couple of optional ones
-* url=String - url of the website to scrape, default: https://atos.net
-* depth=Int - max depth of recursion while searching for links, default 3
-* file=String - path to file where to store results of execution, default ./result.txt
-* showCmd=Bool - show results in command line?, default false
+* url=String - url of the website to scrape
+* depth=Int - max depth of recursion while searching for links
+* file=String - path to file where to store results of execution
+* showCmd=Bool - show results in command line?
+* sameDomain=Bool - include in searching only domain specified by the url flag
