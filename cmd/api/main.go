@@ -11,38 +11,6 @@ import (
 	"golang.org/x/net/html"
 )
 
-func checkLink(link string, rootLink string) bool {
-	return strings.Contains(link, rootLink) || (!strings.Contains(link, rootLink) && !strings.Contains(link, "://"))
-}
-
-func getPageLinks(resp *http.Response, rootLink string) []string {
-	tokenizer := html.NewTokenizer(resp.Body)
-
-	var pageLinks []string
-
-	for {
-		tt := tokenizer.Next()
-		switch tt {
-		case html.ErrorToken:
-			return pageLinks
-		case html.StartTagToken:
-			tagName, _ := tokenizer.TagName()
-			if tagName[0] == 'a' && len(tagName) == 1 {
-				for {
-					attr, val, moreArgs := tokenizer.TagAttr()
-					if string(attr) == "href" && checkLink(string(val), rootLink) {
-						pageLinks = append(pageLinks, string(val))
-						break
-					}
-					if moreArgs == false {
-						break
-					}
-				}
-			}
-		}
-	}
-}
-
 type Link struct {
 	Href   string
 	Source string
@@ -50,10 +18,11 @@ type Link struct {
 }
 
 func main() {
-	var urlFlag = flag.String("url", "https://atos.net", "url from where to parse links")
+	var urlFlag = flag.String("url", "https://www.interia.pl", "url from where to parse links")
 	var maxDepthFlag = flag.Int("depth", 3, "max depth to which to parse links")
 	var fileFlag = flag.String("file", "result.txt", "path to file where to store results of program execution")
 	var cmdFlag = flag.Bool("showCmd", false, "show results in command line")
+	var domainFlag = flag.Bool("sameDomain", true, "include in searching only domain specified by the url flag")
 	flag.Parse()
 
 	pageLinksSet := make(map[string]bool) // only includes one copy of every path
@@ -79,7 +48,8 @@ func main() {
 		resp, err := http.Get(linksToParse[0].Href)
 		if err != nil {
 			log.Print("Something went wrong with connection to:", linksToParse[0].Href)
-			break
+			linksToParse = linksToParse[1:]
+			continue
 		}
 
 		defer resp.Body.Close()
@@ -91,16 +61,9 @@ func main() {
 
 		ctype := resp.Header.Get("Content-Type")
 		if strings.HasPrefix(ctype, "text/html") {
-			pageLinks := getPageLinks(resp, rootLink)
+			pageLinks := getPageLinks(resp, rootLink, *domainFlag)
 			for _, link := range pageLinks {
-				fullLink := link
-				if !strings.Contains(fullLink, rootLink) {
-					if len(link) > 0 && link[0] == '/' {
-						fullLink = *urlFlag + link
-					} else {
-						fullLink = *urlFlag + "/" + link
-					}
-				}
+				fullLink := makeLink(link, rootLink, *domainFlag, *urlFlag)
 
 				// if link is not already present inside the main map, then append it to parsing
 				if !pageLinksSet[fullLink] {
@@ -133,6 +96,54 @@ func main() {
 		fmt.Fprintf(file, " %s - %s %d\n", link.Href, link.Source, link.Depth)
 		if *cmdFlag {
 			fmt.Printf(" %s - %s %d\n", link.Href, link.Source, link.Depth)
+		}
+	}
+}
+
+func makeLink(link string, rootLink string, onlyRootLink bool, urlFlag string) string {
+	if !strings.Contains(link, rootLink) {
+		if !strings.Contains(link, "://") || onlyRootLink {
+			if len(link) > 0 && link[0] == '/' {
+				return urlFlag + link
+			} else {
+				return urlFlag + "/" + link
+			}
+		}
+	}
+	return link
+}
+
+func checkLink(link string, rootLink string, onlyRootLink bool) bool {
+	if onlyRootLink {
+		return strings.Contains(link, rootLink) || (!strings.Contains(link, rootLink) && !strings.Contains(link, "://"))
+	}
+	return true
+}
+
+func getPageLinks(resp *http.Response, rootLink string, onlyRootLink bool) []string {
+	tokenizer := html.NewTokenizer(resp.Body)
+
+	var pageLinks []string
+
+	for {
+		tt := tokenizer.Next()
+		switch tt {
+		case html.ErrorToken:
+			return pageLinks
+		case html.StartTagToken:
+			tagName, _ := tokenizer.TagName()
+			if tagName[0] == 'a' && len(tagName) == 1 {
+				for {
+					attr, val, moreArgs := tokenizer.TagAttr()
+					if string(attr) == "href" && checkLink(string(val), rootLink, onlyRootLink) {
+						pageLinks = append(pageLinks, string(val))
+						break
+					}
+					if moreArgs == false {
+						break
+					}
+				}
+			}
 		}
 	}
 }
